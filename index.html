@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>EdgeFinder</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root{
+      --bg:#07111f;--panel:#0e1b2b;--panel2:#14243a;--text:#f8fafc;
+      --muted:#94a3b8;--line:#26384e;--green:#22c55e;--amber:#f59e0b;
+      --red:#ef4444;--blue:#38bdf8;--input:#0a1626;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:900px;margin:auto;padding:16px 14px 90px}
+    header{padding:8px 2px 18px}
+    h1{margin:0;font-size:28px}.sub{color:var(--muted);margin-top:5px;font-size:14px}
+    nav{display:flex;gap:8px;overflow:auto;margin-bottom:14px;position:sticky;top:0;background:rgba(7,17,31,.95);padding:10px 0;z-index:3}
+    nav button,.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:700;background:var(--panel2);color:var(--text)}
+    nav button.active,.btn.primary{background:var(--green);color:#04130a}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
+    .panel h2{font-size:18px;margin:0 0 12px}
+    .hint,.small{color:var(--muted);font-size:13px;line-height:1.45}
+    label{display:block;color:#cbd5e1;font-size:13px;margin:10px 0 6px}
+    input,select,textarea{width:100%;border:1px solid var(--line);background:var(--input);color:var(--text);border-radius:12px;padding:12px;font-size:16px}
+    textarea{min-height:130px;font-family:ui-monospace,monospace}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .btn{width:100%;margin-top:12px;cursor:pointer}
+    .btn.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+    .hidden{display:none}
+    .statrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+    .stat{background:var(--panel2);border-radius:13px;padding:12px;text-align:center}
+    .stat b{display:block;font-size:19px}.stat span{font-size:11px;color:var(--muted)}
+    .card{border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0;background:#0b1727}
+    .card.bet{border-color:var(--green)}.card.pass{opacity:.72}
+    .topline{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .fixture{font-weight:800}.badge{border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800;background:var(--panel2)}
+    .badge.bet{background:rgba(34,197,94,.18);color:#86efac}.badge.pass{background:rgba(239,68,68,.15);color:#fca5a5}
+    .market{font-size:21px;font-weight:900;margin:12px 0 4px}
+    table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 7px;border-bottom:1px solid var(--line);text-align:left}
+    th{color:var(--muted);font-weight:700}
+    .error{color:#fecaca;background:rgba(239,68,68,.12);padding:10px;border-radius:10px;margin-top:10px}
+    .success{color:#bbf7d0;background:rgba(34,197,94,.12);padding:10px;border-radius:10px;margin-top:10px}
+    footer{color:var(--muted);font-size:11px;text-align:center;margin:25px 0}
+    @media(max-width:600px){.grid3{grid-template-columns:1fr 1fr}.statrow{grid-template-columns:1fr 1fr 1fr}.wrap{padding-left:10px;padding-right:10px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+<header><h1>⚽ EdgeFinder</h1><div class="sub">Your phone-first Poisson betting model</div></header>
+<nav>
+  <button data-tab="data" class="active">1. Data</button>
+  <button data-tab="analyse">2. Analyse</button>
+  <button data-tab="results">3. Bets</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+
+<section id="data" class="tab">
+  <div class="panel">
+    <h2>Load completed results</h2>
+    <div class="hint">Upload a CSV containing: League, Date, HomeTeam, AwayTeam, FTHG, FTAG. The file stays on your device.</div>
+    <input id="resultsFile" type="file" accept=".csv,text/csv">
+    <button class="btn secondary" id="loadDemo">Load demo data</button>
+    <div id="dataStatus"></div>
+  </div>
+  <div class="panel">
+    <h2>Team database</h2>
+    <div id="teamSummary" class="hint">No results loaded yet.</div>
+    <div style="overflow:auto"><table id="teamTable"></table></div>
+  </div>
+</section>
+
+<section id="analyse" class="tab hidden">
+  <div class="panel">
+    <h2>Add a fixture</h2>
+    <div class="grid">
+      <div><label>League</label><select id="league"></select></div>
+      <div><label>Home team</label><select id="homeTeam"></select></div>
+    </div>
+    <label>Away team</label><select id="awayTeam"></select>
+    <div class="grid3">
+      <div><label>Home</label><input id="homeOdds" inputmode="decimal" placeholder="2.10"></div>
+      <div><label>Draw</label><input id="drawOdds" inputmode="decimal" placeholder="3.40"></div>
+      <div><label>Away</label><input id="awayOdds" inputmode="decimal" placeholder="3.30"></div>
+      <div><label>Home scores</label><input id="homeScoreOdds" inputmode="decimal" placeholder="1.25"></div>
+      <div><label>Away scores</label><input id="awayScoreOdds" inputmode="decimal" placeholder="1.32"></div>
+      <div><label>BTTS Yes</label><input id="bttsOdds" inputmode="decimal" placeholder="1.80"></div>
+      <div><label>Over 1.5</label><input id="o15Odds" inputmode="decimal" placeholder="1.30"></div>
+      <div><label>Over 2.5</label><input id="o25Odds" inputmode="decimal" placeholder="1.95"></div>
+    </div>
+    <button class="btn primary" id="analyseBtn">Analyse fixture</button>
+    <div id="analyseError"></div>
+  </div>
+</section>
+
+<section id="results" class="tab hidden">
+  <div class="panel">
+    <div class="topline"><h2>Ranked recommendations</h2><button class="btn secondary" id="clearResults" style="width:auto;margin:0">Clear</button></div>
+    <div id="resultStats" class="statrow"></div>
+    <div id="cards"><div class="hint">Analyse a fixture to see recommendations.</div></div>
+  </div>
+</section>
+
+<section id="settings" class="tab hidden">
+  <div class="panel">
+    <h2>Model settings</h2>
+    <label>Minimum edge</label><input id="minEdge" inputmode="decimal" value="0.05">
+    <label>Maximum stake (units)</label><input id="maxStake" inputmode="decimal" value="2">
+    <label>Stake multiplier</label><input id="stakeMult" inputmode="decimal" value="10">
+    <label>Maximum goals modelled</label><input id="maxGoals" inputmode="numeric" value="10">
+    <button class="btn primary" id="saveSettings">Save settings</button>
+    <div id="settingsStatus"></div>
+  </div>
+</section>
+
+<footer>Statistical estimates only. Positive model edge does not guarantee profit.</footer>
+</div>
+<script>
+const state={results:[],teams:[],leagues:[],recommendations:JSON.parse(localStorage.getItem("edgefinderBets")||"[]")};
+const demo=`League,Date,HomeTeam,AwayTeam,FTHG,FTAG
+Demo League,2026-01-01,Harbour United,Riverside City,2,1
+Demo League,2026-01-02,Meadow FC,Kingston Athletic,1,1
+Demo League,2026-01-08,Riverside City,Meadow FC,2,0
+Demo League,2026-01-09,Kingston Athletic,Harbour United,1,3
+Demo League,2026-01-15,Harbour United,Meadow FC,2,0
+Demo League,2026-01-16,Riverside City,Kingston Athletic,1,1
+Demo League,2026-01-22,Meadow FC,Harbour United,1,2
+Demo League,2026-01-23,Kingston Athletic,Riverside City,0,1
+Demo League,2026-01-29,Harbour United,Kingston Athletic,3,1
+Demo League,2026-01-30,Meadow FC,Riverside City,2,2
+Demo League,2026-02-05,Riverside City,Harbour United,1,1
+Demo League,2026-02-06,Kingston Athletic,Meadow FC,2,0`;
+
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+function showTab(id){document.querySelectorAll(".tab").forEach(x=>x.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x.dataset.tab===id));if(id==="results")renderCards()}
+function parseCSV(text){
+ const lines=text.trim().split(/\r?\n/).filter(Boolean), heads=lines[0].split(",").map(x=>x.trim());
+ return lines.slice(1).map(line=>{const v=line.split(",");const o={};heads.forEach((h,i)=>o[h]=(v[i]||"").trim());o.FTHG=+o.FTHG;o.FTAG=+o.FTAG;return o});
+}
+function buildDatabase(rows){
+ const req=["League","HomeTeam","AwayTeam","FTHG","FTAG"];if(!rows.length||req.some(k=>!(k in rows[0])))throw Error("CSV needs League, Date, HomeTeam, AwayTeam, FTHG and FTAG columns.");
+ const map={},league={};
+ rows.forEach(r=>{
+  if(!Number.isFinite(r.FTHG)||!Number.isFinite(r.FTAG))return;
+  league[r.League]??={matches:0,hg:0,ag:0};league[r.League].matches++;league[r.League].hg+=r.FTHG;league[r.League].ag+=r.FTAG;
+  const hk=r.League+"|"+r.HomeTeam,ak=r.League+"|"+r.AwayTeam;
+  map[hk]??={League:r.League,Team:r.HomeTeam,HP:0,HGF:0,HGA:0,AP:0,AGF:0,AGA:0};
+  map[ak]??={League:r.League,Team:r.AwayTeam,HP:0,HGF:0,HGA:0,AP:0,AGF:0,AGA:0};
+  map[hk].HP++;map[hk].HGF+=r.FTHG;map[hk].HGA+=r.FTAG;
+  map[ak].AP++;map[ak].AGF+=r.FTAG;map[ak].AGA+=r.FTHG;
+ });
+ state.results=rows;state.teams=Object.values(map);state.leagues=Object.entries(league).map(([League,x])=>({League,home:x.hg/x.matches,away:x.ag/x.matches,matches:x.matches}));
+ populateSelectors();renderTeamTable();
+ localStorage.setItem("edgefinderResults",JSON.stringify(rows));
+ document.getElementById("dataStatus").innerHTML=`<div class="success">Loaded ${rows.length} matches across ${state.leagues.length} league(s).</div>`;
+}
+function populateSelectors(){
+ const l=document.getElementById("league");l.innerHTML=state.leagues.map(x=>`<option>${x.League}</option>`).join("");updateTeams();
+}
+function updateTeams(){
+ const league=document.getElementById("league").value, teams=state.teams.filter(x=>x.League===league).map(x=>x.Team).sort();
+ ["homeTeam","awayTeam"].forEach(id=>document.getElementById(id).innerHTML=teams.map(t=>`<option>${t}</option>`).join(""));
+}
+document.getElementById("league").onchange=updateTeams;
+function renderTeamTable(){
+ document.getElementById("teamSummary").textContent=`${state.teams.length} teams calculated from ${state.results.length} matches.`;
+ const rows=state.teams.slice(0,30).map(t=>`<tr><td>${t.League}</td><td>${t.Team}</td><td>${t.HP}</td><td>${t.HGF}</td><td>${t.HGA}</td><td>${t.AP}</td><td>${t.AGF}</td><td>${t.AGA}</td></tr>`).join("");
+ document.getElementById("teamTable").innerHTML=`<tr><th>League</th><th>Team</th><th>HP</th><th>HGF</th><th>HGA</th><th>AP</th><th>AGF</th><th>AGA</th></tr>${rows}`;
+}
+document.getElementById("resultsFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{buildDatabase(parseCSV(r.result))}catch(err){document.getElementById("dataStatus").innerHTML=`<div class="error">${err.message}</div>`}};r.readAsText(f)};
+document.getElementById("loadDemo").onclick=()=>buildDatabase(parseCSV(demo));
+
+function fact(n){let x=1;for(let i=2;i<=n;i++)x*=i;return x}
+function pois(k,l){return Math.exp(-l)*Math.pow(l,k)/fact(k)}
+function probabilities(hl,al,max=10){
+ let hw=0,d=0,aw=0,btts=0,o15=0,o25=0;
+ for(let h=0;h<=max;h++)for(let a=0;a<=max;a++){const p=pois(h,hl)*pois(a,al);if(h>a)hw+=p;else if(h===a)d+=p;else aw+=p;if(h>0&&a>0)btts+=p;if(h+a>=2)o15+=p;if(h+a>=3)o25+=p}
+ return {"Home Win":hw,"Draw":d,"Away Win":aw,"Home Team to Score":1-Math.exp(-hl),"Away Team to Score":1-Math.exp(-al),"BTTS Yes":btts,"Over 1.5":o15,"Over 2.5":o25};
+}
+function num(id){const x=parseFloat(document.getElementById(id).value);return Number.isFinite(x)?x:null}
+function analyse(){
+ try{
+  if(!state.teams.length)throw Error("Load results data first.");
+  const league=document.getElementById("league").value,home=document.getElementById("homeTeam").value,away=document.getElementById("awayTeam").value;
+  if(home===away)throw Error("Select two different teams.");
+  const h=state.teams.find(x=>x.League===league&&x.Team===home),a=state.teams.find(x=>x.League===league&&x.Team===away),l=state.leagues.find(x=>x.League===league);
+  if(!h||!a||!h.HP||!a.AP)throw Error("Not enough home/away data for this fixture.");
+  const hl=((h.HGF/h.HP)/l.home)*((a.AGA/a.AP)/l.home)*l.home;
+  const al=((a.AGF/a.AP)/l.away)*((h.HGA/h.HP)/l.away)*l.away;
+  const probs=probabilities(Math.max(.01,hl),Math.max(.01,al),+document.getElementById("maxGoals").value||10);
+  const odds={"Home Win":num("homeOdds"),"Draw":num("drawOdds"),"Away Win":num("awayOdds"),"Home Team to Score":num("homeScoreOdds"),"Away Team to Score":num("awayScoreOdds"),"BTTS Yes":num("bttsOdds"),"Over 1.5":num("o15Odds"),"Over 2.5":num("o25Odds")};
+  const rows=Object.keys(odds).filter(k=>odds[k]>1).map(k=>({market:k,odds:odds[k],prob:probs[k],edge:probs[k]*odds[k]-1}));
+  if(!rows.length)throw Error("Enter at least one valid decimal price.");
+  rows.sort((x,y)=>y.edge-x.edge);const best=rows[0],min=+document.getElementById("minEdge").value||.05,maxStake=+document.getElementById("maxStake").value||2,mult=+document.getElementById("stakeMult").value||10;
+  const rating=best.edge<min?"No value":best.edge<.08?"Watch":best.edge<.12?"Good":best.edge<.18?"Strong":"Elite";
+  const rec={id:Date.now(),league,fixture:`${home} v ${away}`,market:best.market,odds:best.odds,prob:best.prob,edge:best.edge,rating,stake:best.edge>=min?Math.min(maxStake,Math.round(best.edge*mult*10)/10):0,decision:best.edge>=min?"BET":"PASS",hl,al};
+  state.recommendations.unshift(rec);localStorage.setItem("edgefinderBets",JSON.stringify(state.recommendations));document.getElementById("analyseError").innerHTML=`<div class="success">Analysed. ${rec.decision}: ${rec.market} at ${rec.odds.toFixed(2)}</div>`;showTab("results");
+ }catch(e){document.getElementById("analyseError").innerHTML=`<div class="error">${e.message}</div>`}
+}
+document.getElementById("analyseBtn").onclick=analyse;
+function renderCards(){
+ const bets=state.recommendations.filter(x=>x.decision==="BET"),highest=state.recommendations.length?Math.max(...state.recommendations.map(x=>x.edge)):0,total=bets.reduce((s,x)=>s+x.stake,0);
+ document.getElementById("resultStats").innerHTML=`<div class="stat"><b>${bets.length}</b><span>Qualifying</span></div><div class="stat"><b>${(highest*100).toFixed(1)}%</b><span>Highest edge</span></div><div class="stat"><b>${total.toFixed(1)}u</b><span>Total stake</span></div>`;
+ document.getElementById("cards").innerHTML=state.recommendations.length?state.recommendations.map(x=>`<div class="card ${x.decision.toLowerCase()}"><div class="topline"><div><div class="small">${x.league}</div><div class="fixture">${x.fixture}</div></div><span class="badge ${x.decision.toLowerCase()}">${x.decision}</span></div><div class="market">${x.market}</div><div class="small">Odds ${x.odds.toFixed(2)} · Model ${(x.prob*100).toFixed(1)}% · Edge ${(x.edge*100).toFixed(1)}%</div><div class="statrow"><div class="stat"><b>${x.rating}</b><span>Rating</span></div><div class="stat"><b>${x.stake.toFixed(1)}u</b><span>Stake</span></div><div class="stat"><b>${x.hl.toFixed(2)}–${x.al.toFixed(2)}</b><span>Expected goals</span></div></div></div>`).join(""):`<div class="hint">Analyse a fixture to see recommendations.</div>`;
+}
+document.getElementById("clearResults").onclick=()=>{state.recommendations=[];localStorage.removeItem("edgefinderBets");renderCards()};
+document.getElementById("saveSettings").onclick=()=>{const s={minEdge:num("minEdge"),maxStake:num("maxStake"),stakeMult:num("stakeMult"),maxGoals:num("maxGoals")};localStorage.setItem("edgefinderSettings",JSON.stringify(s));document.getElementById("settingsStatus").innerHTML='<div class="success">Settings saved.</div>'};
+const saved=JSON.parse(localStorage.getItem("edgefinderSettings")||"null");if(saved)Object.entries(saved).forEach(([k,v])=>{const el=document.getElementById(k);if(el)el.value=v});
+const savedResults=JSON.parse(localStorage.getItem("edgefinderResults")||"[]");if(savedResults.length)try{buildDatabase(savedResults)}catch(e){}
+renderCards();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
+</script>
+</body>
+</html>

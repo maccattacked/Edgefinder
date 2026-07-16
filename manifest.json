@@ -1,0 +1,9 @@
+{
+  "name": "EdgeFinder Betting Model",
+  "short_name": "EdgeFinder",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#07111f",
+  "theme_color": "#07111f",
+  "icons": []
+}
