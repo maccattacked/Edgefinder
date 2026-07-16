@@ -65,7 +65,7 @@
 <header>
   <div class="brand">
     <div><h1>⚽ EdgeFinder</h1><div class="sub">Phone-first betting model</div></div>
-    <div class="pill">CLEAR VERDICT</div>
+    <div class="pill">TOP 5 FIXED</div>
   </div>
 </header>
 
@@ -739,7 +739,7 @@ document.getElementById("analyseBtn").onclick=()=>{
       HomeScoresOdds:inputNum("homeScoreOdds"),AwayScoresOdds:inputNum("awayScoreOdds"),
       BTTSOdds:inputNum("bttsOdds"),O15Odds:inputNum("o15Odds"),O25Odds:inputNum("o25Odds")
     });
-    saveRecommendations([rec]);document.getElementById("analyseError").innerHTML='<div class="success">Fixture analysed and saved.</div>';showTab("bets");
+    saveRecommendations([rec]);document.getElementById("analyseError").innerHTML='<div class="success">Fixture analysed and added to Top 5 ranking.</div>';showTab("dashboard");
   }catch(e){document.getElementById("analyseError").innerHTML=`<div class="error">${e.message}</div>`}
 };
 
@@ -750,7 +750,7 @@ document.getElementById("analyseBulk").onclick=()=>{
     rows.forEach((r,i)=>{try{recs.push(analyseRow(r))}catch(e){errors.push(`Row ${i+1}: ${e.message}`)}});
     if(recs.length)saveRecommendations(recs);
     document.getElementById("bulkStatus").innerHTML=`<div class="${recs.length?'success':'error'}">${recs.length} fixture(s) analysed.${errors.length?` ${errors.length} error(s).`:""}</div>${errors.length?`<details><summary>Show errors</summary><div class="small">${errors.join("<br>")}</div></details>`:""}`;
-    if(recs.length)showTab("bets");
+    if(recs.length)showTab("dashboard");
   }catch(e){document.getElementById("bulkStatus").innerHTML=`<div class="error">${e.message}</div>`}
 };
 
@@ -783,41 +783,59 @@ function renderTop5(){
 
   if(!state.completed.length){
     stats.innerHTML="";
-    status.innerHTML='<div class="info">Import a completed-results CSV first.</div>';
-    cards.innerHTML='<div class="hint">The model needs completed matches before it can price upcoming fixtures.</div>';
-    return;
-  }
-  if(!state.upcoming.length){
-    stats.innerHTML="";
-    status.innerHTML='<div class="info">No upcoming fixtures were found in the imported CSV files.</div>';
-    cards.innerHTML='<div class="hint">Upload Football-Data’s upcoming fixtures file alongside the season results file.</div>';
+    status.innerHTML='<div class="info">Import completed-results data first.</div>';
+    cards.innerHTML='<div class="hint">The model needs completed matches before it can price fixtures.</div>';
     return;
   }
 
-  const {recs,errors}=analyseUpcomingForTop5();
-  const minimum=inputNum("minEdge")??.05;
-  const qualifying=recs.filter(x=>verdictFor(x).label!=="PASS").sort((a,b)=>{const order={BET:4,WATCH:3,REVIEW:2,PASS:1};const d=order[verdictFor(b).label]-order[verdictFor(a).label];return d||b.edge-a.edge;});
-  const top=qualifying.slice(0,5);
-  const oddsCount=state.upcoming.filter(r=>[r.HomeOdds,r.DrawOdds,r.AwayOdds,r.O25Odds,r.U25Odds].some(v=>numValue(v)>1)).length;
+  const importedAnalysis=state.upcoming.length?analyseUpcomingForTop5():{recs:[],errors:[]};
+
+  const combined=[...state.recommendations,...importedAnalysis.recs];
+  const unique=[];
+  const seen=new Set();
+
+  combined.forEach(x=>{
+    const key=[x.league,x.fixture,x.market,Number(x.odds).toFixed(3)].join("|");
+    if(!seen.has(key)){
+      seen.add(key);
+      unique.push(x);
+    }
+  });
+
+  const ranked=unique
+    .filter(x=>verdictFor(x).label!=="PASS")
+    .sort((a,b)=>{
+      const order={BET:4,WATCH:3,REVIEW:2,PASS:1};
+      const verdictDifference=order[verdictFor(b).label]-order[verdictFor(a).label];
+      if(verdictDifference!==0)return verdictDifference;
+      const confidenceDifference=confidenceScore(b)-confidenceScore(a);
+      if(confidenceDifference!==0)return confidenceDifference;
+      return b.edge-a.edge;
+    });
+
+  const top=ranked.slice(0,5);
+  const analysedCount=unique.length;
+  const betCount=unique.filter(x=>verdictFor(x).label==="BET").length;
 
   stats.innerHTML=`
-    <div class="stat"><b>${state.upcoming.length}</b><span>Upcoming</span></div>
-    <div class="stat"><b>${oddsCount}</b><span>With odds</span></div>
-    <div class="stat"><b>${qualifying.length}</b><span>Value bets</span></div>
-    <div class="stat"><b>${top.length}</b><span>Top shown</span></div>`;
+    <div class="stat"><b>${analysedCount}</b><span>Analysed</span></div>
+    <div class="stat"><b>${betCount}</b><span>Recommended bets</span></div>
+    <div class="stat"><b>${ranked.length}</b><span>Top 5 eligible</span></div>
+    <div class="stat"><b>${top.length}</b><span>Shown</span></div>`;
 
-  if(!oddsCount){
-    status.innerHTML='<div class="info">Upcoming fixtures were found, but no recognised odds were included.</div>';
-    cards.innerHTML='<div class="hint">Football-Data odds columns recognised: B365H/D/A, AvgH/D/A, MaxH/D/A, B365&gt;2.5, Avg&gt;2.5 and Max&gt;2.5.</div>';
+  if(!analysedCount){
+    status.innerHTML='<div class="info">No analysed fixtures yet.</div>';
+    cards.innerHTML='<div class="hint">Analyse fixtures manually or import upcoming fixtures with odds.</div>';
     return;
   }
 
-  status.innerHTML=errors.length
-    ? `<div class="info">${errors.length} fixture(s) could not be analysed due to missing team history or invalid data.</div>`
-    : `<div class="success">Top 5 refreshed from ${oddsCount} priced fixture(s).</div>`;
+  status.innerHTML=importedAnalysis.errors.length
+    ? `<div class="info">${importedAnalysis.errors.length} imported fixture(s) could not be analysed. Manually analysed fixtures are still included.</div>`
+    : `<div class="success">Top 5 updated from ${analysedCount} analysed fixture(s).</div>`;
 
-  cards.innerHTML=top.length?top.map((x,i)=>decisionCard(x,i+1)).join("")
-    : '<div class="info">No upcoming markets currently meet your minimum edge.</div>';
+  cards.innerHTML=top.length
+    ? top.map((x,i)=>decisionCard(x,i+1)).join("")
+    : '<div class="info">No fixtures currently qualify for the Top 5.</div>';
 }
 
 window.saveTop5Bet=x=>{
@@ -1231,6 +1249,7 @@ function saveRecommendations(recs){
   state.recommendations=[...recs,...state.recommendations];
   localStorage.setItem("efRecommendations",JSON.stringify(state.recommendations));
   renderCards();
+  renderTop5();
 }
 function renderCards(){
   const lf=document.getElementById("betLeagueFilter")?.value||"";
