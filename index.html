@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#06101d">
+  <title>EdgeFinder</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root{
+      --bg:#06101d;--panel:#0d1a2a;--panel2:#13243a;--text:#f8fafc;
+      --muted:#94a3b8;--line:#26384e;--green:#22c55e;--green2:#86efac;
+      --amber:#f59e0b;--red:#ef4444;--blue:#38bdf8;--input:#091524;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:980px;margin:auto;padding:14px 12px 100px}
+    header{padding:10px 2px 16px}
+    .brand{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    h1{margin:0;font-size:30px}.sub{color:var(--muted);margin-top:4px;font-size:13px}
+    .pill{padding:7px 10px;border-radius:999px;background:rgba(34,197,94,.14);color:var(--green2);font-size:11px;font-weight:800}
+    nav{display:flex;gap:8px;overflow:auto;position:sticky;top:0;background:rgba(6,16,29,.96);padding:10px 0;z-index:5}
+    nav button,.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:800;background:var(--panel2);color:var(--text)}
+    nav button.active,.btn.primary{background:var(--green);color:#04130a}
+    .btn{cursor:pointer}.btn.secondary{background:var(--panel2);border:1px solid var(--line)}.btn.danger{background:rgba(239,68,68,.15);color:#fecaca}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:15px;margin-bottom:13px}
+    .panel h2{font-size:18px;margin:0 0 10px}.panel h3{font-size:15px;margin:18px 0 8px}
+    .hint,.small{color:var(--muted);font-size:12.5px;line-height:1.45}
+    label{display:block;color:#cbd5e1;font-size:12.5px;margin:10px 0 6px}
+    input,select,textarea{width:100%;border:1px solid var(--line);background:var(--input);color:var(--text);border-radius:12px;padding:12px;font-size:16px}
+    textarea{min-height:160px;font-family:ui-monospace,SFMono-Regular,monospace;font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+    .row{display:flex;gap:8px;align-items:center}.row>*{flex:1}.hidden{display:none!important}
+    .statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+    .stat{background:var(--panel2);border-radius:13px;padding:11px;text-align:center;min-width:0}
+    .stat b{display:block;font-size:18px;overflow:hidden;text-overflow:ellipsis}.stat span{font-size:10px;color:var(--muted)}
+    .card{border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0;background:#0a1626}
+    .card.bet{border-color:var(--green)}.card.pass{opacity:.76}
+    .topline{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .fixture{font-weight:900}.badge{border-radius:999px;padding:5px 9px;font-size:10px;font-weight:900;background:var(--panel2);white-space:nowrap}
+    .badge.bet{background:rgba(34,197,94,.18);color:#86efac}.badge.pass{background:rgba(239,68,68,.14);color:#fca5a5}
+    .market{font-size:21px;font-weight:900;margin:11px 0 4px}
+    .card-actions{display:flex;gap:8px;margin-top:10px}.card-actions button{flex:1}
+    table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+    th{color:var(--muted)}.scroll{overflow:auto}
+    .error,.success,.info{padding:10px;border-radius:10px;margin-top:10px;font-size:13px}
+    .error{color:#fecaca;background:rgba(239,68,68,.12)}
+    .success{color:#bbf7d0;background:rgba(34,197,94,.12)}
+    .info{color:#bae6fd;background:rgba(56,189,248,.10)}
+    .seg{display:flex;gap:7px;overflow:auto;padding-bottom:4px}.seg button{white-space:nowrap}
+    details{border:1px solid var(--line);border-radius:13px;padding:10px;margin-top:10px}
+    summary{cursor:pointer;font-weight:800}
+    footer{color:var(--muted);font-size:11px;text-align:center;margin:25px 0}
+    @media(max-width:650px){
+      .grid3{grid-template-columns:1fr 1fr}
+      .statrow{grid-template-columns:1fr 1fr}
+      .wrap{padding-left:10px;padding-right:10px}
+      h1{font-size:27px}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">
+    <div><h1>⚽ EdgeFinder</h1><div class="sub">Phone-first betting model</div></div>
+    <div class="pill">TOP 5 LIVE</div>
+  </div>
+</header>
+
+<nav>
+  <button data-tab="dashboard" class="active">Top 5</button>
+  <button data-tab="data">Data</button>
+  <button data-tab="analyse">Analyse</button>
+  <button data-tab="bets">Bets</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+
+
+<section id="dashboard" class="tab">
+  <div class="panel">
+    <div class="topline">
+      <div>
+        <h2>🔥 Top 5 Value Bets</h2>
+        <div class="hint">Automatically ranked from upcoming fixtures with recognised Football-Data odds.</div>
+      </div>
+      <button class="btn primary" id="refreshTop5" style="width:auto">Refresh</button>
+    </div>
+    <div id="top5Stats" class="statrow"></div>
+    <div id="top5Status"></div>
+    <div id="top5Cards"><div class="hint">Import completed and upcoming Football-Data CSVs to generate your Top 5.</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>How ranking works</h2>
+    <div class="hint">
+      EdgeFinder analyses every upcoming fixture that has valid odds, compares model probability with bookmaker price,
+      removes anything below your minimum edge, then displays the five strongest remaining bets.
+      Football-Data commonly supplies Home, Draw, Away and Over 2.5 odds.
+    </div>
+  </div>
+</section>
+
+<section id="data" class="tab hidden">
+  <div class="panel">
+    <h2>Import Football-Data CSVs</h2>
+    <div class="hint">You can select several league files together. Completed matches build the model; unplayed rows are kept as upcoming fixtures.</div>
+    <label>Select one or more CSV files</label>
+    <input id="resultsFile" type="file" accept=".csv,text/csv" multiple>
+    <div class="row">
+      <button class="btn secondary" id="loadDemo">Load demo</button>
+      <button class="btn danger" id="clearData">Clear data</button>
+    </div>
+    <div id="dataStatus"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Data summary</h2>
+    <div id="dataStats" class="statrow"></div>
+    <div class="seg" id="leagueFilters"></div>
+    <div id="teamSummary" class="hint">No data loaded.</div>
+    <div class="scroll"><table id="teamTable"></table></div>
+  </div>
+
+  <div class="panel">
+    <h2>Upcoming fixtures found</h2>
+    <div class="hint">If Football-Data includes unplayed rows, EdgeFinder lists them here. Any recognised bookmaker odds are carried into analysis.</div>
+    <div class="scroll"><table id="upcomingTable"></table></div>
+  </div>
+</section>
+
+<section id="analyse" class="tab hidden">
+  <div class="panel">
+    <h2>Analyse one fixture</h2>
+    <div class="grid">
+      <div><label>League</label><select id="league"></select></div>
+      <div><label>Home team</label><select id="homeTeam"></select></div>
+    </div>
+    <label>Away team</label><select id="awayTeam"></select>
+    <div class="grid3">
+      <div><label>Home</label><input id="homeOdds" inputmode="decimal"></div>
+      <div><label>Draw</label><input id="drawOdds" inputmode="decimal"></div>
+      <div><label>Away</label><input id="awayOdds" inputmode="decimal"></div>
+      <div><label>Home scores</label><input id="homeScoreOdds" inputmode="decimal"></div>
+      <div><label>Away scores</label><input id="awayScoreOdds" inputmode="decimal"></div>
+      <div><label>BTTS Yes</label><input id="bttsOdds" inputmode="decimal"></div>
+      <div><label>Over 1.5</label><input id="o15Odds" inputmode="decimal"></div>
+      <div><label>Over 2.5</label><input id="o25Odds" inputmode="decimal"></div>
+    </div>
+    <button class="btn primary" id="analyseBtn" style="width:100%;margin-top:12px">Analyse fixture</button>
+    <div id="analyseError"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Analyse multiple fixtures</h2>
+    <div class="hint">Paste CSV rows with headers. Supported headings include League/Div, HomeTeam, AwayTeam, Home Odds/B365H, Draw Odds/B365D, Away Odds/B365A and Over 2.5/B365&gt;2.5.</div>
+    <textarea id="bulkInput" placeholder="League,HomeTeam,AwayTeam,Home Odds,Draw Odds,Away Odds,Over 2.5 Odds&#10;E0,Arsenal,Chelsea,2.10,3.40,3.30,1.95"></textarea>
+    <div class="row">
+      <button class="btn primary" id="analyseBulk">Analyse pasted fixtures</button>
+      <button class="btn secondary" id="loadUpcoming">Load upcoming fixtures</button>
+    </div>
+    <div id="bulkStatus"></div>
+  </div>
+</section>
+
+<section id="bets" class="tab hidden">
+  <div class="panel">
+    <div class="topline"><h2>Saved recommendations</h2><button class="btn danger" id="clearResults" style="width:auto">Clear all</button></div>
+    <div id="resultStats" class="statrow"></div>
+    <div class="grid">
+      <div><label>League filter</label><select id="betLeagueFilter"><option value="">All leagues</option></select></div>
+      <div><label>Decision filter</label><select id="decisionFilter"><option value="">All</option><option>BET</option><option>PASS</option></select></div>
+    </div>
+    <button class="btn secondary" id="exportBets" style="width:100%;margin-top:10px">Export recommendations CSV</button>
+    <div id="cards"><div class="hint">Analyse fixtures to create recommendations.</div></div>
+  </div>
+</section>
+
+<section id="settings" class="tab hidden">
+  <div class="panel">
+    <h2>Model settings</h2>
+    <label>Minimum edge</label><input id="minEdge" inputmode="decimal" value="0.05">
+    <label>Maximum stake (units)</label><input id="maxStake" inputmode="decimal" value="2">
+    <label>Stake multiplier</label><input id="stakeMult" inputmode="decimal" value="10">
+    <label>Maximum goals modelled</label><input id="maxGoals" inputmode="numeric" value="10">
+    <button class="btn primary" id="saveSettings" style="width:100%;margin-top:12px">Save settings</button>
+    <div id="settingsStatus"></div>
+  </div>
+</section>
+
+<footer>Statistical estimates only. Positive model edge does not guarantee profit.</footer>
+</div>
+
+<script>
+const state={
+  allRows:JSON.parse(localStorage.getItem("efAllRows")||"[]"),
+  completed:[],upcoming:[],teams:[],leagues:[],
+  recommendations:JSON.parse(localStorage.getItem("efRecommendations")||"[]"),
+  dataLeagueFilter:""
+};
+
+const demo=`Div,Date,HomeTeam,AwayTeam,FTHG,FTAG,B365H,B365D,B365A,B365>2.5
+D1,01/08/26,Harbour United,Riverside City,2,1,2.10,3.40,3.30,1.95
+D1,02/08/26,Meadow FC,Kingston Athletic,1,1,2.40,3.10,2.90,2.05
+D1,08/08/26,Riverside City,Meadow FC,2,0,1.95,3.50,3.80,1.88
+D1,09/08/26,Kingston Athletic,Harbour United,1,3,3.10,3.40,2.20,1.80
+D1,15/08/26,Harbour United,Meadow FC,2,0,1.85,3.60,4.20,1.92
+D1,16/08/26,Riverside City,Kingston Athletic,1,1,2.00,3.30,3.70,2.00
+D1,22/08/26,Meadow FC,Harbour United,1,2,3.00,3.40,2.25,1.85
+D1,23/08/26,Kingston Athletic,Riverside City,0,1,2.90,3.10,2.45,2.10
+D1,29/08/26,Harbour United,Kingston Athletic,3,1,1.80,3.70,4.40,1.75
+D1,30/08/26,Meadow FC,Riverside City,2,2,2.75,3.25,2.50,1.90
+D1,05/09/26,Riverside City,Harbour United,1,1,2.35,3.20,2.95,2.00
+D1,06/09/26,Kingston Athletic,Meadow FC,2,0,2.05,3.20,3.60,2.15
+D1,20/09/26,Harbour United,Riverside City,,,2.05,3.40,3.50,1.90
+D1,20/09/26,Meadow FC,Kingston Athletic,,,2.30,3.25,3.00,2.05`;
+
+const aliases={
+  Div:"League",Home:"HomeTeam",Away:"AwayTeam",HG:"FTHG",AG:"FTAG",
+  HomeGoals:"FTHG",AwayGoals:"FTAG",
+  "Home Team":"HomeTeam","Away Team":"AwayTeam",
+  "Home Odds":"HomeOdds","Draw Odds":"DrawOdds","Away Odds":"AwayOdds",
+  "Home Scores Odds":"HomeScoresOdds","Away Scores Odds":"AwayScoresOdds",
+  "BTTS Yes Odds":"BTTSOdds","Over 1.5 Odds":"O15Odds","Over 2.5 Odds":"O25Odds",
+  B365H:"HomeOdds",B365D:"DrawOdds",B365A:"AwayOdds",
+  AvgH:"HomeOdds",AvgD:"DrawOdds",AvgA:"AwayOdds",MaxH:"HomeOdds",MaxD:"DrawOdds",MaxA:"AwayOdds",
+  "B365>2.5":"O25Odds","Avg>2.5":"O25Odds","Max>2.5":"O25Odds",
+  "B365<2.5":"U25Odds","Avg<2.5":"U25Odds","Max<2.5":"U25Odds"
+};
+
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+function showTab(id){
+  document.querySelectorAll(".tab").forEach(x=>x.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x.dataset.tab===id));
+  if(id==="bets")renderCards();if(id==="dashboard")renderTop5();
+}
+
+function parseCSV(text){
+  text=text.replace(/^\uFEFF/,"");
+  const rows=[];let row=[],cell="",quoted=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i],next=text[i+1];
+    if(ch==='"'){
+      if(quoted&&next==='"'){cell+='"';i++;}else quoted=!quoted;
+    }else if(ch===","&&!quoted){row.push(cell);cell="";}
+    else if((ch==="\n"||ch==="\r")&&!quoted){
+      if(ch==="\r"&&next==="\n")i++;
+      row.push(cell);cell="";
+      if(row.some(v=>v.trim()!==""))rows.push(row);
+      row=[];
+    }else cell+=ch;
+  }
+  if(cell.length||row.length){row.push(cell);if(row.some(v=>v.trim()!==""))rows.push(row);}
+  if(!rows.length)return[];
+  const heads=rows[0].map(x=>aliases[x.trim()]||x.trim());
+  return rows.slice(1).map(values=>{
+    const o={};heads.forEach((h,i)=>o[h]=(values[i]||"").trim());
+    ["FTHG","FTAG","HomeOdds","DrawOdds","AwayOdds","HomeScoresOdds","AwayScoresOdds","BTTSOdds","O15Odds","O25Odds","U25Odds"].forEach(k=>{
+      if(o[k]!==undefined&&o[k]!==""){const n=Number(o[k]);o[k]=Number.isFinite(n)?n:o[k];}
+    });
+    return o;
+  });
+}
+
+function rebuildDatabase(){
+  const rows=state.allRows.filter(r=>r.League&&r.HomeTeam&&r.AwayTeam);
+  state.completed=rows.filter(r=>Number.isFinite(Number(r.FTHG))&&Number.isFinite(Number(r.FTAG))&&r.FTHG!==""&&r.FTAG!=="");
+  state.upcoming=rows.filter(r=>!(Number.isFinite(Number(r.FTHG))&&Number.isFinite(Number(r.FTAG))&&r.FTHG!==""&&r.FTAG!==""));
+  const map={},league={};
+  state.completed.forEach(r=>{
+    const hg=Number(r.FTHG),ag=Number(r.FTAG);
+    league[r.League]??={matches:0,hg:0,ag:0};league[r.League].matches++;league[r.League].hg+=hg;league[r.League].ag+=ag;
+    const hk=r.League+"|"+r.HomeTeam,ak=r.League+"|"+r.AwayTeam;
+    map[hk]??={League:r.League,Team:r.HomeTeam,HP:0,HGF:0,HGA:0,AP:0,AGF:0,AGA:0};
+    map[ak]??={League:r.League,Team:r.AwayTeam,HP:0,HGF:0,HGA:0,AP:0,AGF:0,AGA:0};
+    map[hk].HP++;map[hk].HGF+=hg;map[hk].HGA+=ag;
+    map[ak].AP++;map[ak].AGF+=ag;map[ak].AGA+=hg;
+  });
+  state.teams=Object.values(map);
+  state.leagues=Object.entries(league).map(([League,x])=>({League,home:x.hg/x.matches,away:x.ag/x.matches,matches:x.matches}));
+  localStorage.setItem("efAllRows",JSON.stringify(state.allRows));
+  populateSelectors();renderData();renderTop5();
+}
+
+async function readFiles(files){
+  const merged=[];
+  for(const file of files){
+    const text=await file.text();
+    parseCSV(text).forEach(r=>merged.push(r));
+  }
+  if(!merged.length)throw Error("No usable rows found.");
+  state.allRows=merged;rebuildDatabase();
+}
+
+document.getElementById("resultsFile").onchange=async e=>{
+  try{
+    await readFiles([...e.target.files]);
+    document.getElementById("dataStatus").innerHTML=`<div class="success">Imported ${e.target.files.length} file(s).</div>`;
+  }catch(err){document.getElementById("dataStatus").innerHTML=`<div class="error">${err.message}</div>`}
+};
+document.getElementById("loadDemo").onclick=()=>{state.allRows=parseCSV(demo);rebuildDatabase();document.getElementById("dataStatus").innerHTML='<div class="success">Demo data loaded.</div>'};
+document.getElementById("clearData").onclick=()=>{state.allRows=[];rebuildDatabase();localStorage.removeItem("efAllRows");document.getElementById("dataStatus").innerHTML='<div class="info">Data cleared.</div>'};
+
+function populateSelectors(){
+  const l=document.getElementById("league");
+  l.innerHTML=state.leagues.map(x=>`<option>${x.League}</option>`).join("");
+  updateTeams();
+  const bf=document.getElementById("betLeagueFilter");
+  bf.innerHTML='<option value="">All leagues</option>'+state.leagues.map(x=>`<option>${x.League}</option>`).join("");
+}
+function updateTeams(){
+  const league=document.getElementById("league").value;
+  const teams=state.teams.filter(x=>x.League===league).map(x=>x.Team).sort();
+  ["homeTeam","awayTeam"].forEach(id=>document.getElementById(id).innerHTML=teams.map(t=>`<option>${t}</option>`).join(""));
+}
+document.getElementById("league").onchange=updateTeams;
+
+function renderData(){
+  document.getElementById("dataStats").innerHTML=`
+    <div class="stat"><b>${state.completed.length}</b><span>Completed</span></div>
+    <div class="stat"><b>${state.upcoming.length}</b><span>Upcoming</span></div>
+    <div class="stat"><b>${state.teams.length}</b><span>Teams</span></div>
+    <div class="stat"><b>${state.leagues.length}</b><span>Leagues</span></div>`;
+  const filters=['',...state.leagues.map(x=>x.League)];
+  document.getElementById("leagueFilters").innerHTML=filters.map(x=>`<button class="btn ${state.dataLeagueFilter===x?'primary':'secondary'}" onclick="setDataLeague('${x.replaceAll("'","\\'")}')">${x||"All"}</button>`).join("");
+  const teams=state.teams.filter(x=>!state.dataLeagueFilter||x.League===state.dataLeagueFilter);
+  document.getElementById("teamSummary").textContent=state.teams.length?`${teams.length} team rows shown.`:"No data loaded.";
+  document.getElementById("teamTable").innerHTML=state.teams.length?
+    `<tr><th>League</th><th>Team</th><th>HP</th><th>HGF</th><th>HGA</th><th>AP</th><th>AGF</th><th>AGA</th></tr>`+
+    teams.slice(0,100).map(t=>`<tr><td>${t.League}</td><td>${t.Team}</td><td>${t.HP}</td><td>${t.HGF}</td><td>${t.HGA}</td><td>${t.AP}</td><td>${t.AGF}</td><td>${t.AGA}</td></tr>`).join("")
+    :"";
+  document.getElementById("upcomingTable").innerHTML=state.upcoming.length?
+    `<tr><th>League</th><th>Date</th><th>Home</th><th>Away</th><th>H</th><th>D</th><th>A</th></tr>`+
+    state.upcoming.slice(0,100).map(r=>`<tr><td>${r.League}</td><td>${r.Date||""}</td><td>${r.HomeTeam}</td><td>${r.AwayTeam}</td><td>${r.HomeOdds||""}</td><td>${r.DrawOdds||""}</td><td>${r.AwayOdds||""}</td></tr>`).join("")
+    :`<tr><td class="hint">No upcoming rows found in the imported files.</td></tr>`;
+}
+window.setDataLeague=x=>{state.dataLeagueFilter=x;renderData()};
+
+function fact(n){let x=1;for(let i=2;i<=n;i++)x*=i;return x}
+function pois(k,l){return Math.exp(-l)*Math.pow(l,k)/fact(k)}
+function probabilities(hl,al,max=10){
+  let hw=0,d=0,aw=0,btts=0,o15=0,o25=0;
+  for(let h=0;h<=max;h++)for(let a=0;a<=max;a++){
+    const p=pois(h,hl)*pois(a,al);
+    if(h>a)hw+=p;else if(h===a)d+=p;else aw+=p;
+    if(h>0&&a>0)btts+=p;if(h+a>=2)o15+=p;if(h+a>=3)o25+=p;
+  }
+  return {"Home Win":hw,"Draw":d,"Away Win":aw,"Home Team to Score":1-Math.exp(-hl),"Away Team to Score":1-Math.exp(-al),"BTTS Yes":btts,"Over 1.5":o15,"Over 2.5":o25,"Under 2.5":1-o25};
+}
+function numValue(v){const n=Number(v);return Number.isFinite(n)?n:null}
+function inputNum(id){return numValue(document.getElementById(id).value)}
+
+function analyseRow(row){
+  if(!state.teams.length)throw Error("Load completed results first.");
+  const league=row.League,home=row.HomeTeam,away=row.AwayTeam;
+  if(!league||!home||!away)throw Error("League, home team and away team are required.");
+  if(home===away)throw Error("Home and away team cannot be the same.");
+  const h=state.teams.find(x=>x.League===league&&x.Team===home);
+  const a=state.teams.find(x=>x.League===league&&x.Team===away);
+  const l=state.leagues.find(x=>x.League===league);
+  if(!h||!a||!l||!h.HP||!a.AP)throw Error(`Not enough home/away data for ${home} v ${away}.`);
+  const hl=((h.HGF/h.HP)/l.home)*((a.AGA/a.AP)/l.home)*l.home;
+  const al=((a.AGF/a.AP)/l.away)*((h.HGA/h.HP)/l.away)*l.away;
+  const probs=probabilities(Math.max(.01,hl),Math.max(.01,al),Number(document.getElementById("maxGoals").value)||10);
+  const odds={
+    "Home Win":numValue(row.HomeOdds),"Draw":numValue(row.DrawOdds),"Away Win":numValue(row.AwayOdds),
+    "Home Team to Score":numValue(row.HomeScoresOdds),"Away Team to Score":numValue(row.AwayScoresOdds),
+    "BTTS Yes":numValue(row.BTTSOdds),"Over 1.5":numValue(row.O15Odds),"Over 2.5":numValue(row.O25Odds),"Under 2.5":numValue(row.U25Odds)
+  };
+  const markets=Object.keys(odds).filter(k=>odds[k]>1).map(k=>({market:k,odds:odds[k],prob:probs[k],edge:probs[k]*odds[k]-1}));
+  if(!markets.length)throw Error(`No valid decimal odds for ${home} v ${away}.`);
+  markets.sort((x,y)=>y.edge-x.edge);
+  const best=markets[0],min=inputNum("minEdge")??.05,maxStake=inputNum("maxStake")??2,mult=inputNum("stakeMult")??10;
+  const rating=best.edge<min?"No value":best.edge<.08?"Watch":best.edge<.12?"Good":best.edge<.18?"Strong":"Elite";
+  return {
+    id:Date.now()+Math.random(),created:new Date().toISOString(),league,fixture:`${home} v ${away}`,
+    market:best.market,odds:best.odds,prob:best.prob,edge:best.edge,rating,
+    stake:best.edge>=min?Math.min(maxStake,Math.round(best.edge*mult*10)/10):0,
+    decision:best.edge>=min?"BET":"PASS",hl,al
+  };
+}
+
+document.getElementById("analyseBtn").onclick=()=>{
+  try{
+    const rec=analyseRow({
+      League:document.getElementById("league").value,
+      HomeTeam:document.getElementById("homeTeam").value,
+      AwayTeam:document.getElementById("awayTeam").value,
+      HomeOdds:inputNum("homeOdds"),DrawOdds:inputNum("drawOdds"),AwayOdds:inputNum("awayOdds"),
+      HomeScoresOdds:inputNum("homeScoreOdds"),AwayScoresOdds:inputNum("awayScoreOdds"),
+      BTTSOdds:inputNum("bttsOdds"),O15Odds:inputNum("o15Odds"),O25Odds:inputNum("o25Odds")
+    });
+    saveRecommendations([rec]);document.getElementById("analyseError").innerHTML='<div class="success">Fixture analysed and saved.</div>';showTab("bets");
+  }catch(e){document.getElementById("analyseError").innerHTML=`<div class="error">${e.message}</div>`}
+};
+
+document.getElementById("analyseBulk").onclick=()=>{
+  try{
+    const rows=parseCSV(document.getElementById("bulkInput").value);
+    const recs=[],errors=[];
+    rows.forEach((r,i)=>{try{recs.push(analyseRow(r))}catch(e){errors.push(`Row ${i+1}: ${e.message}`)}});
+    if(recs.length)saveRecommendations(recs);
+    document.getElementById("bulkStatus").innerHTML=`<div class="${recs.length?'success':'error'}">${recs.length} fixture(s) analysed.${errors.length?` ${errors.length} error(s).`:""}</div>${errors.length?`<details><summary>Show errors</summary><div class="small">${errors.join("<br>")}</div></details>`:""}`;
+    if(recs.length)showTab("bets");
+  }catch(e){document.getElementById("bulkStatus").innerHTML=`<div class="error">${e.message}</div>`}
+};
+
+document.getElementById("loadUpcoming").onclick=()=>{
+  if(!state.upcoming.length){document.getElementById("bulkStatus").innerHTML='<div class="info">No upcoming rows were found in your imported CSVs.</div>';return;}
+  const headers=["League","HomeTeam","AwayTeam","HomeOdds","DrawOdds","AwayOdds","O25Odds"];
+  const lines=[headers.join(","),...state.upcoming.map(r=>headers.map(h=>r[h]??"").join(","))];
+  document.getElementById("bulkInput").value=lines.join("\n");
+  document.getElementById("bulkStatus").innerHTML=`<div class="success">Loaded ${state.upcoming.length} upcoming fixture(s). Review the odds, then tap Analyse pasted fixtures.</div>`;
+};
+
+
+function analyseUpcomingForTop5(){
+  const recs=[],errors=[];
+  state.upcoming.forEach((r,i)=>{
+    try{
+      const hasOdds=[r.HomeOdds,r.DrawOdds,r.AwayOdds,r.O25Odds,r.U25Odds].some(v=>numValue(v)>1);
+      if(!hasOdds)return;
+      recs.push(analyseRow(r));
+    }catch(e){errors.push(`Row ${i+1}: ${e.message}`)}
+  });
+  return {recs,errors};
+}
+
+function renderTop5(){
+  const stats=document.getElementById("top5Stats");
+  const cards=document.getElementById("top5Cards");
+  const status=document.getElementById("top5Status");
+  if(!stats||!cards||!status)return;
+
+  if(!state.completed.length){
+    stats.innerHTML="";
+    status.innerHTML='<div class="info">Import a completed-results CSV first.</div>';
+    cards.innerHTML='<div class="hint">The model needs completed matches before it can price upcoming fixtures.</div>';
+    return;
+  }
+  if(!state.upcoming.length){
+    stats.innerHTML="";
+    status.innerHTML='<div class="info">No upcoming fixtures were found in the imported CSV files.</div>';
+    cards.innerHTML='<div class="hint">Upload Football-Data’s upcoming fixtures file alongside the season results file.</div>';
+    return;
+  }
+
+  const {recs,errors}=analyseUpcomingForTop5();
+  const minimum=inputNum("minEdge")??.05;
+  const qualifying=recs.filter(x=>x.edge>=minimum).sort((a,b)=>b.edge-a.edge);
+  const top=qualifying.slice(0,5);
+  const oddsCount=state.upcoming.filter(r=>[r.HomeOdds,r.DrawOdds,r.AwayOdds,r.O25Odds,r.U25Odds].some(v=>numValue(v)>1)).length;
+
+  stats.innerHTML=`
+    <div class="stat"><b>${state.upcoming.length}</b><span>Upcoming</span></div>
+    <div class="stat"><b>${oddsCount}</b><span>With odds</span></div>
+    <div class="stat"><b>${qualifying.length}</b><span>Value bets</span></div>
+    <div class="stat"><b>${top.length}</b><span>Top shown</span></div>`;
+
+  if(!oddsCount){
+    status.innerHTML='<div class="info">Upcoming fixtures were found, but no recognised odds were included.</div>';
+    cards.innerHTML='<div class="hint">Football-Data odds columns recognised: B365H/D/A, AvgH/D/A, MaxH/D/A, B365&gt;2.5, Avg&gt;2.5 and Max&gt;2.5.</div>';
+    return;
+  }
+
+  status.innerHTML=errors.length
+    ? `<div class="info">${errors.length} fixture(s) could not be analysed due to missing team history or invalid data.</div>`
+    : `<div class="success">Top 5 refreshed from ${oddsCount} priced fixture(s).</div>`;
+
+  cards.innerHTML=top.length?top.map((x,i)=>`
+    <div class="card bet">
+      <div class="topline">
+        <div>
+          <div class="small">#${i+1} · ${x.league}</div>
+          <div class="fixture">${x.fixture}</div>
+        </div>
+        <span class="badge bet">${x.rating}</span>
+      </div>
+      <div class="market">${x.market} @ ${x.odds.toFixed(2)}</div>
+      <div class="small">Model ${(x.prob*100).toFixed(1)}% · Edge ${(x.edge*100).toFixed(1)}%</div>
+      <div class="statrow">
+        <div class="stat"><b>${x.stake.toFixed(1)}u</b><span>Suggested stake</span></div>
+        <div class="stat"><b>${x.hl.toFixed(2)}</b><span>Home xG</span></div>
+        <div class="stat"><b>${x.al.toFixed(2)}</b><span>Away xG</span></div>
+        <div class="stat"><b>${x.decision}</b><span>Decision</span></div>
+      </div>
+      <button class="btn secondary" style="width:100%" onclick='saveTop5Bet(${JSON.stringify(x).replaceAll("'","&#39;")})'>Save recommendation</button>
+    </div>`).join("")
+    : '<div class="info">No upcoming markets currently meet your minimum edge.</div>';
+}
+
+window.saveTop5Bet=x=>{
+  const duplicate=state.recommendations.some(r=>r.fixture===x.fixture&&r.market===x.market&&Math.abs(r.odds-x.odds)<0.001);
+  if(!duplicate){
+    x.id=Date.now()+Math.random();
+    x.created=new Date().toISOString();
+    saveRecommendations([x]);
+    document.getElementById("top5Status").innerHTML='<div class="success">Recommendation saved.</div>';
+  }else{
+    document.getElementById("top5Status").innerHTML='<div class="info">That recommendation is already saved.</div>';
+  }
+};
+
+document.getElementById("refreshTop5").onclick=renderTop5;
+
+function saveRecommendations(recs){
+  state.recommendations=[...recs,...state.recommendations];
+  localStorage.setItem("efRecommendations",JSON.stringify(state.recommendations));
+  renderCards();
+}
+function renderCards(){
+  const lf=document.getElementById("betLeagueFilter")?.value||"";
+  const df=document.getElementById("decisionFilter")?.value||"";
+  const shown=state.recommendations.filter(x=>(!lf||x.league===lf)&&(!df||x.decision===df));
+  const bets=shown.filter(x=>x.decision==="BET"),highest=shown.length?Math.max(...shown.map(x=>x.edge)):0,total=bets.reduce((s,x)=>s+x.stake,0);
+  document.getElementById("resultStats").innerHTML=`
+    <div class="stat"><b>${shown.length}</b><span>Shown</span></div>
+    <div class="stat"><b>${bets.length}</b><span>Qualifying</span></div>
+    <div class="stat"><b>${(highest*100).toFixed(1)}%</b><span>Highest edge</span></div>
+    <div class="stat"><b>${total.toFixed(1)}u</b><span>Total stake</span></div>`;
+  document.getElementById("cards").innerHTML=shown.length?shown.map(x=>`
+    <div class="card ${x.decision.toLowerCase()}">
+      <div class="topline"><div><div class="small">${x.league}</div><div class="fixture">${x.fixture}</div></div><span class="badge ${x.decision.toLowerCase()}">${x.decision}</span></div>
+      <div class="market">${x.market}</div>
+      <div class="small">Odds ${x.odds.toFixed(2)} · Model ${(x.prob*100).toFixed(1)}% · Edge ${(x.edge*100).toFixed(1)}%</div>
+      <div class="statrow">
+        <div class="stat"><b>${x.rating}</b><span>Rating</span></div>
+        <div class="stat"><b>${x.stake.toFixed(1)}u</b><span>Stake</span></div>
+        <div class="stat"><b>${x.hl.toFixed(2)}</b><span>Home xG</span></div>
+        <div class="stat"><b>${x.al.toFixed(2)}</b><span>Away xG</span></div>
+      </div>
+      <div class="card-actions"><button class="btn danger" onclick="deleteRec(${x.id})">Delete</button></div>
+    </div>`).join(""):'<div class="hint">No recommendations match the selected filters.</div>';
+}
+window.deleteRec=id=>{state.recommendations=state.recommendations.filter(x=>x.id!==id);localStorage.setItem("efRecommendations",JSON.stringify(state.recommendations));renderCards()};
+document.getElementById("clearResults").onclick=()=>{state.recommendations=[];localStorage.removeItem("efRecommendations");renderCards()};
+document.getElementById("betLeagueFilter").onchange=renderCards;
+document.getElementById("decisionFilter").onchange=renderCards;
+
+document.getElementById("exportBets").onclick=()=>{
+  if(!state.recommendations.length)return;
+  const h=["League","Fixture","Market","Odds","Model Probability","Edge","Rating","Stake","Decision","Home Lambda","Away Lambda"];
+  const lines=[h.join(","),...state.recommendations.map(x=>[x.league,x.fixture,x.market,x.odds,x.prob,x.edge,x.rating,x.stake,x.decision,x.hl,x.al].map(v=>`"${String(v).replaceAll('"','""')}"`).join(","))];
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="edgefinder-recommendations.csv";a.click();URL.revokeObjectURL(url);
+};
+
+document.getElementById("saveSettings").onclick=()=>{
+  const s={minEdge:inputNum("minEdge"),maxStake:inputNum("maxStake"),stakeMult:inputNum("stakeMult"),maxGoals:inputNum("maxGoals")};
+  localStorage.setItem("efSettings",JSON.stringify(s));
+  document.getElementById("settingsStatus").innerHTML='<div class="success">Settings saved.</div>';
+};
+const saved=JSON.parse(localStorage.getItem("efSettings")||"null");
+if(saved)Object.entries(saved).forEach(([k,v])=>{const el=document.getElementById(k);if(el&&v!==null)el.value=v});
+
+if(state.allRows.length)rebuildDatabase();else renderData();
+renderCards();renderTop5();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
+</script>
+</body>
+</html>
