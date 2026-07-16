@@ -65,18 +65,44 @@
 <header>
   <div class="brand">
     <div><h1>⚽ EdgeFinder</h1><div class="sub">Phone-first betting model</div></div>
-    <div class="pill">FOUNDATION</div>
+    <div class="pill">TOP 5 LIVE</div>
   </div>
 </header>
 
 <nav>
-  <button data-tab="data" class="active">Data</button>
+  <button data-tab="dashboard" class="active">Top 5</button>
+  <button data-tab="data">Data</button>
   <button data-tab="analyse">Analyse</button>
   <button data-tab="bets">Bets</button>
   <button data-tab="settings">Settings</button>
 </nav>
 
-<section id="data" class="tab">
+
+<section id="dashboard" class="tab">
+  <div class="panel">
+    <div class="topline">
+      <div>
+        <h2>🔥 Top 5 Value Bets</h2>
+        <div class="hint">Automatically ranked from upcoming fixtures with recognised Football-Data odds.</div>
+      </div>
+      <button class="btn primary" id="refreshTop5" style="width:auto">Refresh</button>
+    </div>
+    <div id="top5Stats" class="statrow"></div>
+    <div id="top5Status"></div>
+    <div id="top5Cards"><div class="hint">Import completed and upcoming Football-Data CSVs to generate your Top 5.</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>How ranking works</h2>
+    <div class="hint">
+      EdgeFinder analyses every upcoming fixture that has valid odds, compares model probability with bookmaker price,
+      removes anything below your minimum edge, then displays the five strongest remaining bets.
+      Football-Data commonly supplies Home, Draw, Away and Over 2.5 odds.
+    </div>
+  </div>
+</section>
+
+<section id="data" class="tab hidden">
   <div class="panel">
     <h2>Import Football-Data CSVs</h2>
     <div class="hint">You can select several league files together. Completed matches build the model; unplayed rows are kept as upcoming fixtures.</div>
@@ -198,8 +224,9 @@ const aliases={
   "Home Scores Odds":"HomeScoresOdds","Away Scores Odds":"AwayScoresOdds",
   "BTTS Yes Odds":"BTTSOdds","Over 1.5 Odds":"O15Odds","Over 2.5 Odds":"O25Odds",
   B365H:"HomeOdds",B365D:"DrawOdds",B365A:"AwayOdds",
-  AvgH:"HomeOdds",AvgD:"DrawOdds",AvgA:"AwayOdds",
-  "B365>2.5":"O25Odds","Avg>2.5":"O25Odds"
+  AvgH:"HomeOdds",AvgD:"DrawOdds",AvgA:"AwayOdds",MaxH:"HomeOdds",MaxD:"DrawOdds",MaxA:"AwayOdds",
+  "B365>2.5":"O25Odds","Avg>2.5":"O25Odds","Max>2.5":"O25Odds",
+  "B365<2.5":"U25Odds","Avg<2.5":"U25Odds","Max<2.5":"U25Odds"
 };
 
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
@@ -207,7 +234,7 @@ function showTab(id){
   document.querySelectorAll(".tab").forEach(x=>x.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x.dataset.tab===id));
-  if(id==="bets")renderCards();
+  if(id==="bets")renderCards();if(id==="dashboard")renderTop5();
 }
 
 function parseCSV(text){
@@ -230,7 +257,7 @@ function parseCSV(text){
   const heads=rows[0].map(x=>aliases[x.trim()]||x.trim());
   return rows.slice(1).map(values=>{
     const o={};heads.forEach((h,i)=>o[h]=(values[i]||"").trim());
-    ["FTHG","FTAG","HomeOdds","DrawOdds","AwayOdds","HomeScoresOdds","AwayScoresOdds","BTTSOdds","O15Odds","O25Odds"].forEach(k=>{
+    ["FTHG","FTAG","HomeOdds","DrawOdds","AwayOdds","HomeScoresOdds","AwayScoresOdds","BTTSOdds","O15Odds","O25Odds","U25Odds"].forEach(k=>{
       if(o[k]!==undefined&&o[k]!==""){const n=Number(o[k]);o[k]=Number.isFinite(n)?n:o[k];}
     });
     return o;
@@ -254,7 +281,7 @@ function rebuildDatabase(){
   state.teams=Object.values(map);
   state.leagues=Object.entries(league).map(([League,x])=>({League,home:x.hg/x.matches,away:x.ag/x.matches,matches:x.matches}));
   localStorage.setItem("efAllRows",JSON.stringify(state.allRows));
-  populateSelectors();renderData();
+  populateSelectors();renderData();renderTop5();
 }
 
 async function readFiles(files){
@@ -320,7 +347,7 @@ function probabilities(hl,al,max=10){
     if(h>a)hw+=p;else if(h===a)d+=p;else aw+=p;
     if(h>0&&a>0)btts+=p;if(h+a>=2)o15+=p;if(h+a>=3)o25+=p;
   }
-  return {"Home Win":hw,"Draw":d,"Away Win":aw,"Home Team to Score":1-Math.exp(-hl),"Away Team to Score":1-Math.exp(-al),"BTTS Yes":btts,"Over 1.5":o15,"Over 2.5":o25};
+  return {"Home Win":hw,"Draw":d,"Away Win":aw,"Home Team to Score":1-Math.exp(-hl),"Away Team to Score":1-Math.exp(-al),"BTTS Yes":btts,"Over 1.5":o15,"Over 2.5":o25,"Under 2.5":1-o25};
 }
 function numValue(v){const n=Number(v);return Number.isFinite(n)?n:null}
 function inputNum(id){return numValue(document.getElementById(id).value)}
@@ -340,7 +367,7 @@ function analyseRow(row){
   const odds={
     "Home Win":numValue(row.HomeOdds),"Draw":numValue(row.DrawOdds),"Away Win":numValue(row.AwayOdds),
     "Home Team to Score":numValue(row.HomeScoresOdds),"Away Team to Score":numValue(row.AwayScoresOdds),
-    "BTTS Yes":numValue(row.BTTSOdds),"Over 1.5":numValue(row.O15Odds),"Over 2.5":numValue(row.O25Odds)
+    "BTTS Yes":numValue(row.BTTSOdds),"Over 1.5":numValue(row.O15Odds),"Over 2.5":numValue(row.O25Odds),"Under 2.5":numValue(row.U25Odds)
   };
   const markets=Object.keys(odds).filter(k=>odds[k]>1).map(k=>({market:k,odds:odds[k],prob:probs[k],edge:probs[k]*odds[k]-1}));
   if(!markets.length)throw Error(`No valid decimal odds for ${home} v ${away}.`);
@@ -387,6 +414,96 @@ document.getElementById("loadUpcoming").onclick=()=>{
   document.getElementById("bulkInput").value=lines.join("\n");
   document.getElementById("bulkStatus").innerHTML=`<div class="success">Loaded ${state.upcoming.length} upcoming fixture(s). Review the odds, then tap Analyse pasted fixtures.</div>`;
 };
+
+
+function analyseUpcomingForTop5(){
+  const recs=[],errors=[];
+  state.upcoming.forEach((r,i)=>{
+    try{
+      const hasOdds=[r.HomeOdds,r.DrawOdds,r.AwayOdds,r.O25Odds,r.U25Odds].some(v=>numValue(v)>1);
+      if(!hasOdds)return;
+      recs.push(analyseRow(r));
+    }catch(e){errors.push(`Row ${i+1}: ${e.message}`)}
+  });
+  return {recs,errors};
+}
+
+function renderTop5(){
+  const stats=document.getElementById("top5Stats");
+  const cards=document.getElementById("top5Cards");
+  const status=document.getElementById("top5Status");
+  if(!stats||!cards||!status)return;
+
+  if(!state.completed.length){
+    stats.innerHTML="";
+    status.innerHTML='<div class="info">Import a completed-results CSV first.</div>';
+    cards.innerHTML='<div class="hint">The model needs completed matches before it can price upcoming fixtures.</div>';
+    return;
+  }
+  if(!state.upcoming.length){
+    stats.innerHTML="";
+    status.innerHTML='<div class="info">No upcoming fixtures were found in the imported CSV files.</div>';
+    cards.innerHTML='<div class="hint">Upload Football-Data’s upcoming fixtures file alongside the season results file.</div>';
+    return;
+  }
+
+  const {recs,errors}=analyseUpcomingForTop5();
+  const minimum=inputNum("minEdge")??.05;
+  const qualifying=recs.filter(x=>x.edge>=minimum).sort((a,b)=>b.edge-a.edge);
+  const top=qualifying.slice(0,5);
+  const oddsCount=state.upcoming.filter(r=>[r.HomeOdds,r.DrawOdds,r.AwayOdds,r.O25Odds,r.U25Odds].some(v=>numValue(v)>1)).length;
+
+  stats.innerHTML=`
+    <div class="stat"><b>${state.upcoming.length}</b><span>Upcoming</span></div>
+    <div class="stat"><b>${oddsCount}</b><span>With odds</span></div>
+    <div class="stat"><b>${qualifying.length}</b><span>Value bets</span></div>
+    <div class="stat"><b>${top.length}</b><span>Top shown</span></div>`;
+
+  if(!oddsCount){
+    status.innerHTML='<div class="info">Upcoming fixtures were found, but no recognised odds were included.</div>';
+    cards.innerHTML='<div class="hint">Football-Data odds columns recognised: B365H/D/A, AvgH/D/A, MaxH/D/A, B365&gt;2.5, Avg&gt;2.5 and Max&gt;2.5.</div>';
+    return;
+  }
+
+  status.innerHTML=errors.length
+    ? `<div class="info">${errors.length} fixture(s) could not be analysed due to missing team history or invalid data.</div>`
+    : `<div class="success">Top 5 refreshed from ${oddsCount} priced fixture(s).</div>`;
+
+  cards.innerHTML=top.length?top.map((x,i)=>`
+    <div class="card bet">
+      <div class="topline">
+        <div>
+          <div class="small">#${i+1} · ${x.league}</div>
+          <div class="fixture">${x.fixture}</div>
+        </div>
+        <span class="badge bet">${x.rating}</span>
+      </div>
+      <div class="market">${x.market} @ ${x.odds.toFixed(2)}</div>
+      <div class="small">Model ${(x.prob*100).toFixed(1)}% · Edge ${(x.edge*100).toFixed(1)}%</div>
+      <div class="statrow">
+        <div class="stat"><b>${x.stake.toFixed(1)}u</b><span>Suggested stake</span></div>
+        <div class="stat"><b>${x.hl.toFixed(2)}</b><span>Home xG</span></div>
+        <div class="stat"><b>${x.al.toFixed(2)}</b><span>Away xG</span></div>
+        <div class="stat"><b>${x.decision}</b><span>Decision</span></div>
+      </div>
+      <button class="btn secondary" style="width:100%" onclick='saveTop5Bet(${JSON.stringify(x).replaceAll("'","&#39;")})'>Save recommendation</button>
+    </div>`).join("")
+    : '<div class="info">No upcoming markets currently meet your minimum edge.</div>';
+}
+
+window.saveTop5Bet=x=>{
+  const duplicate=state.recommendations.some(r=>r.fixture===x.fixture&&r.market===x.market&&Math.abs(r.odds-x.odds)<0.001);
+  if(!duplicate){
+    x.id=Date.now()+Math.random();
+    x.created=new Date().toISOString();
+    saveRecommendations([x]);
+    document.getElementById("top5Status").innerHTML='<div class="success">Recommendation saved.</div>';
+  }else{
+    document.getElementById("top5Status").innerHTML='<div class="info">That recommendation is already saved.</div>';
+  }
+};
+
+document.getElementById("refreshTop5").onclick=renderTop5;
 
 function saveRecommendations(recs){
   state.recommendations=[...recs,...state.recommendations];
@@ -439,7 +556,7 @@ const saved=JSON.parse(localStorage.getItem("efSettings")||"null");
 if(saved)Object.entries(saved).forEach(([k,v])=>{const el=document.getElementById(k);if(el&&v!==null)el.value=v});
 
 if(state.allRows.length)rebuildDatabase();else renderData();
-renderCards();
+renderCards();renderTop5();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
 </script>
 </body>
