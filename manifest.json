@@ -1,0 +1,9 @@
+{
+  "name": "EdgeFinder Value Bets",
+  "short_name": "Value Bets",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#06101d",
+  "theme_color": "#06101d",
+  "icons": []
+}
