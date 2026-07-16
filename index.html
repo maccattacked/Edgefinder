@@ -60,9 +60,9 @@
 <section id="data" class="tab">
   <div class="panel">
     <h2>Load completed results</h2>
-    <div class="hint">Upload a CSV containing: League, Date, HomeTeam, AwayTeam, FTHG, FTAG. The file stays on your device.</div>
+    <div class="hint">Upload a Football-Data CSV. Both Div and League column formats are supported. The file stays on your device.</div>
     <input id="resultsFile" type="file" accept=".csv,text/csv">
-    <button class="btn secondary" id="loadDemo">Load demo data</button>
+    <button class="btn secondary" id="loadDemo">Or load demo data</button>
     <div id="dataStatus"></div>
   </div>
   <div class="panel">
@@ -136,11 +136,48 @@ Demo League,2026-02-06,Kingston Athletic,Meadow FC,2,0`;
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 function showTab(id){document.querySelectorAll(".tab").forEach(x=>x.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x.dataset.tab===id));if(id==="results")renderCards()}
 function parseCSV(text){
- const lines=text.trim().split(/\r?\n/).filter(Boolean), heads=lines[0].split(",").map(x=>x.trim());
- return lines.slice(1).map(line=>{const v=line.split(",");const o={};heads.forEach((h,i)=>o[h]=(v[i]||"").trim());o.FTHG=+o.FTHG;o.FTAG=+o.FTAG;return o});
+ text = text.replace(/^\uFEFF/, "");
+ const rows = [];
+ let row = [], cell = "", quoted = false;
+ for(let i=0;i<text.length;i++){
+  const ch=text[i], next=text[i+1];
+  if(ch === '"'){
+   if(quoted && next === '"'){ cell += '"'; i++; }
+   else quoted = !quoted;
+  } else if(ch === "," && !quoted){
+   row.push(cell); cell="";
+  } else if((ch === "\n" || ch === "\r") && !quoted){
+   if(ch === "\r" && next === "\n") i++;
+   row.push(cell); cell="";
+   if(row.some(v=>v.trim()!=="")) rows.push(row);
+   row=[];
+  } else {
+   cell += ch;
+  }
+ }
+ if(cell.length || row.length){ row.push(cell); if(row.some(v=>v.trim()!=="")) rows.push(row); }
+ if(!rows.length) return [];
+
+ const aliases = {
+  Div:"League",
+  Home:"HomeTeam",
+  Away:"AwayTeam",
+  HG:"FTHG",
+  AG:"FTAG",
+  HomeGoals:"FTHG",
+  AwayGoals:"FTAG"
+ };
+ const heads=rows[0].map(x=>aliases[x.trim()] || x.trim());
+ return rows.slice(1).map(values=>{
+  const o={};
+  heads.forEach((h,i)=>o[h]=(values[i]||"").trim());
+  o.FTHG=Number(o.FTHG);
+  o.FTAG=Number(o.FTAG);
+  return o;
+ });
 }
 function buildDatabase(rows){
- const req=["League","HomeTeam","AwayTeam","FTHG","FTAG"];if(!rows.length||req.some(k=>!(k in rows[0])))throw Error("CSV needs League, Date, HomeTeam, AwayTeam, FTHG and FTAG columns.");
+ const req=["League","HomeTeam","AwayTeam","FTHG","FTAG"];if(!rows.length||req.some(k=>!(k in rows[0])))throw Error("CSV format not recognised. Football-Data files with Div, Date, HomeTeam, AwayTeam, FTHG and FTAG are supported.");
  const map={},league={};
  rows.forEach(r=>{
   if(!Number.isFinite(r.FTHG)||!Number.isFinite(r.FTAG))return;
